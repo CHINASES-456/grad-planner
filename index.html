@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>研途规划</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2c3e50">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#f5f5f5; --card-bg:#fff; --primary:#2c3e50; --accent:#3498db;
+  --accent2:#2ecc71; --danger:#e74c3c; --warn:#f39c12; --text:#2c3e50;
+  --text-light:#7f8c8d; --border:#ecf0f1; --shadow:0 2px 8px rgba(0,0,0,0.06);
+  --radius:8px; --chat-user:#3498db; --chat-ai:#f0f0f0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
+
+/* Nav */
+nav{
+  background:var(--primary);padding:0 6px;display:flex;align-items:center;gap:2px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.15);position:sticky;top:0;z-index:100;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+nav::-webkit-scrollbar{display:none;}
+nav .logo{color:#fff;font-size:15px;font-weight:700;margin-right:6px;white-space:nowrap;flex-shrink:0;padding:12px 4px;}
+nav button{
+  background:none;border:none;color:rgba(255,255,255,0.7);
+  padding:12px 9px;cursor:pointer;font-size:13px;white-space:nowrap;flex-shrink:0;
+  border-bottom:3px solid transparent;transition:all 0.2s;min-height:44px;
+}
+nav button:hover{color:#fff;background:rgba(255,255,255,0.08);}
+nav button.active{color:#fff;border-bottom-color:var(--accent2);}
+
+/* Layout */
+.container{max-width:900px;margin:0 auto;padding:16px 12px;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* Cards */
+.card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:12px;}
+.card h2{font-size:16px;margin-bottom:10px;color:var(--primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+/* Forms */
+label{display:block;font-size:12px;font-weight:600;margin-bottom:3px;color:var(--text-light);}
+input,select,textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;
+  font-size:14px;font-family:inherit;transition:border 0.2s;background:#fff;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(52,152,219,0.1);}
+textarea{resize:vertical;min-height:60px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-group{margin-bottom:10px;}
+
+/* Buttons */
+.btn{padding:10px 18px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;min-height:44px;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-success{background:var(--accent2);color:#fff;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-outline{background:#fff;color:var(--accent);border:2px solid var(--accent);}
+.btn-sm{padding:6px 12px;font-size:12px;min-height:36px;}
+.btn-xs{padding:4px 9px;font-size:11px;min-height:30px;}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.btn:disabled{opacity:0.5;}
+
+/* Tags */
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin:2px;}
+.tag-research{background:#e8f8f5;color:#1abc9c;}
+.tag-course{background:#ebf5fb;color:#2980b9;}
+.tag-english{background:#fef9e7;color:#f39c12;}
+.tag-coding{background:#f4ecf7;color:#8e44ad;}
+.tag-reading{background:#e8f6f3;color:#16a085;}
+.tag-writing{background:#fdedec;color:#c0392b;}
+.tag-networking{background:#fef9e7;color:#d68910;}
+.tag-rest{background:#eaecee;color:#7f8c8d;}
+.tag-other{background:#f5f5f5;color:#95a5a6;}
+.tag-overdue{background:#c0392b;color:#fff;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+.tag-done{background:#e8f8f5;color:#1abc9c;}
+
+/* Today header */
+.today-header{
+  background:linear-gradient(135deg,#2c3e50,#3498db);color:#fff;
+  padding:18px 20px;border-radius:var(--radius);margin-bottom:14px;
+}
+.today-header .date-big{font-size:20px;font-weight:700;}
+.today-header .meta{font-size:12px;opacity:0.85;margin-top:4px;}
+
+/* Today task */
+.today-task{
+  display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+  margin-bottom:5px;border-radius:var(--radius);border:1px solid var(--border);
+  background:#fff;transition:all 0.2s;
+}
+.today-task.done{opacity:0.5;background:#f9fff9;}
+.today-task.overdue{border-color:var(--danger);background:#fff5f5;}
+.today-task .task-checkbox{width:20px;height:20px;cursor:pointer;accent-color:var(--accent2);transform:scale(1.2);margin-top:2px;flex-shrink:0;}
+.today-task .task-body{flex:1;min-width:0;}
+.today-task .task-desc{font-size:14px;font-weight:600;}
+.today-task .task-desc.done-text{text-decoration:line-through;color:var(--text-light);}
+.today-task .task-meta{font-size:11px;color:var(--text-light);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.today-task .task-hours{display:flex;align-items:center;gap:4px;margin-top:3px;}
+.today-task .task-hours input{width:56px;padding:5px 6px;font-size:12px;}
+.today-task .task-hours label{font-size:11px;margin:0;white-space:nowrap;}
+
+/* Chat panel (compact, on Today page) */
+.chat-panel{
+  border:1px solid var(--border);border-radius:var(--radius);
+  background:#fff;overflow:hidden;
+}
+.chat-panel .chat-header{
+  background:var(--primary);color:#fff;padding:10px 14px;
+  font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center;
+}
+.chat-messages{max-height:260px;overflow-y:auto;padding:10px;}
+.chat-msg{max-width:85%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;margin-bottom:8px;word-wrap:break-word;}
+.chat-msg.ai{align-self:flex-start;background:var(--chat-ai);margin-right:auto;}
+.chat-msg.user{align-self:flex-end;background:var(--chat-user);color:#fff;margin-left:auto;}
+.chat-msg .chat-time{font-size:10px;opacity:0.5;margin-top:4px;}
+.chat-input-row{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--border);}
+.chat-input-row input{flex:1;padding:8px 10px;font-size:13px;border-radius:20px;border:1px solid var(--border);}
+.chat-input-row button{padding:8px 16px;border-radius:20px;background:var(--accent);color:#fff;border:none;font-size:13px;cursor:pointer;white-space:nowrap;}
+
+/* Full chat page */
+.full-chat{display:flex;flex-direction:column;height:70vh;background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);}
+.full-chat .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;max-height:none;}
+.full-chat .chat-msg{max-width:75%;}
+.full-chat .chat-input-row{padding:10px 14px;}
+.full-chat .chat-input-row input{font-size:14px;padding:10px 14px;}
+
+/* Status bar */
+.status-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.status-item{
+  flex:1;min-width:80px;background:var(--card-bg);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:14px;text-align:center;
+}
+.status-item .value{font-size:20px;font-weight:700;color:var(--accent);}
+.status-item .label{font-size:11px;color:var(--text-light);margin-top:2px;}
+
+/* Progress */
+.progress-wrap{background:var(--border);border-radius:10px;height:10px;overflow:hidden;margin:4px 0;}
+.progress-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.5s;}
+
+/* Entry cards */
+.entry-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px;margin-bottom:8px;}
+.entry-card .entry-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;}
+.entry-card .entry-date{font-weight:700;font-size:13px;}
+.entry-card .entry-rating{color:var(--warn);font-size:12px;}
+.entry-card .activities{margin:6px 0;}
+.entry-card .reflection{font-size:12px;color:var(--text-light);font-style:italic;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);}
+
+/* Task cards */
+.task-card{
+  background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:12px 14px;margin-bottom:8px;border-left:4px solid var(--accent);
+  display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;
+}
+.task-card.priority-high{border-left-color:var(--danger);}
+.task-card.overdue{border-left-color:var(--danger);background:#fff5f5;}
+.task-card.completed{border-left-color:var(--accent2);opacity:0.6;}
+.task-card .task-body{flex:1;min-width:120px;}
+.task-card .task-title{font-weight:700;font-size:14px;}
+.task-card .task-meta{font-size:11px;color:var(--text-light);margin-top:3px;}
+.task-card .task-actions{display:flex;gap:4px;}
+
+/* Filter tabs */
+.filter-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;}
+.filter-tab{padding:6px 14px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:#fff;min-height:36px;}
+.filter-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* Warning banner */
+.warn-banner{
+  background:#fff5f5;border:1px solid var(--danger);border-left:4px solid var(--danger);
+  border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;font-size:13px;
+}
+.warn-banner strong{color:var(--danger);}
+
+/* Chart */
+.chart-wrap{position:relative;max-width:100%;}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+/* Settings */
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;}
+.setting-row .setting-label{font-weight:600;font-size:14px;}
+.setting-row .setting-desc{font-size:11px;color:var(--text-light);}
+.api-input{width:100%;max-width:300px;}
+
+/* Empty */
+.empty-state{text-align:center;padding:32px 16px;color:var(--text-light);}
+.empty-state .icon{font-size:40px;margin-bottom:10px;}
+
+/* Toast */
+.toast{position:fixed;bottom:80px;right:16px;z-index:300;background:var(--primary);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.2);animation:slideIn 0.3s ease;max-width:280px;}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* Bottom bar (mobile) */
+.bottom-bar{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--primary);z-index:100;padding:4px 0 env(safe-area-inset-bottom,0);}
+.bottom-bar .bar-btns{display:flex;}
+.bottom-bar button{flex:1;background:none;border:none;color:rgba(255,255,255,0.6);padding:8px 4px;cursor:pointer;font-size:10px;text-align:center;min-height:48px;}
+.bottom-bar button .bb-icon{display:block;font-size:18px;margin-bottom:2px;}
+.bottom-bar button.active{color:var(--accent2);}
+
+/* Responsive */
+@media(max-width:768px){
+  .container{padding:12px 8px;}
+  .card{padding:14px;margin-bottom:10px;}
+  .card h2{font-size:15px;}
+  .form-row{grid-template-columns:1fr;gap:8px;}
+  .chart-row{grid-template-columns:1fr;}
+  .status-bar{gap:6px;}
+  .status-item{min-width:60px;padding:10px;}
+  .status-item .value{font-size:16px;}
+  .today-header{padding:14px;}
+  .today-header .date-big{font-size:18px;}
+  .chat-messages{max-height:200px;}
+  .bottom-bar{display:block;}
+  body{padding-bottom:60px;}
+  .toast{bottom:80px;right:8px;left:8px;max-width:none;text-align:center;}
+  nav .logo{font-size:13px;}
+  nav button{font-size:11px;padding:10px 6px;}
+  .tag{font-size:10px;padding:2px 6px;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">📋 研途</div>
+  <button data-tab="today" class="active">📅 今日</button>
+  <button data-tab="tasks">📋 任务</button>
+  <button data-tab="dashboard">📊 看板</button>
+  <button data-tab="chat">💬 AI对话</button>
+  <button data-tab="settings">⚙️ 设置</button>
+</nav>
+
+<div class="container">
+
+  <!-- ==================== 今日 ==================== -->
+  <div id="page-today" class="page active">
+    <div class="today-header">
+      <div class="date-big" id="today-date-display"></div>
+      <div class="meta" id="today-meta"></div>
+    </div>
+
+    <!-- 日期切换 -->
+    <div class="card" style="padding:10px 14px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-outline" onclick="app.shiftDay(-1)">◀</button>
+        <input type="date" id="today-date-picker" onchange="app.renderToday()" style="flex:1;min-width:120px;max-width:200px;">
+        <button class="btn btn-sm btn-outline" onclick="app.shiftDay(1)">▶</button>
+        <button class="btn btn-sm btn-outline" onclick="app.goToday()">今天</button>
+        <button class="btn btn-sm btn-primary" onclick="app.aiPlanToday()" id="btn-ai-plan" style="margin-left:auto;">🤖 AI 规划</button>
+      </div>
+      <div id="ai-plan-status" style="font-size:12px;color:var(--text-light);margin-top:4px;display:none;"></div>
+    </div>
+
+    <!-- AI 警告 -->
+    <div id="today-warning" style="display:none;"></div>
+
+    <!-- 今日计划 -->
+    <div class="card">
+      <h2>📋 今日计划 <span style="font-size:11px;color:var(--text-light);font-weight:400;">勾选完成</span></h2>
+      <div id="today-tasks"></div>
+      <button class="btn btn-outline btn-sm" onclick="app.addAdhocToday()" style="margin-top:8px;">+ 添加临时任务</button>
+    </div>
+
+    <!-- 统计+总结 -->
+    <div class="card">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:8px 0;" id="today-summary-stats"></div>
+      <div class="form-group"><label>💭 今日反思</label><textarea id="today-reflection" rows="2" placeholder="今天做得好的是什么？哪里需要改进？"></textarea></div>
+      <div class="form-group"><label>自评</label><select id="today-self-rating"><option value="5">⭐⭐⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="3" selected>⭐⭐⭐</option><option value="2">⭐⭐</option><option value="1">⭐</option></select></div>
+      <div class="btn-group"><button class="btn btn-success" onclick="app.saveTodaySummary()">💾 保存今日总结</button><span id="today-saved-msg" style="font-size:12px;color:var(--accent2);display:none;"></span></div>
+    </div>
+
+    <!-- 聊天面板 -->
+    <div class="chat-panel">
+      <div class="chat-header">💬 与 AI 交流今日计划 <span style="font-size:10px;font-weight:400;">AI 了解你的完整历史和目标</span></div>
+      <div class="chat-messages" id="today-chat-msgs"></div>
+      <div class="chat-input-row">
+        <input type="text" id="today-chat-input" placeholder="跟 AI 说点什么…" onkeydown="if(event.key==='Enter')app.sendTodayChat()">
+        <button onclick="app.sendTodayChat()">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 任务库 ==================== -->
+  <div id="page-tasks" class="page">
+    <div class="card">
+      <h2>➕ 添加任务</h2>
+      <div class="form-row"><div class="form-group"><label>标题</label><input type="text" id="task-title"></div><div class="form-group"><label>截止日期</label><input type="date" id="task-due"></div></div>
+      <div class="form-group"><label>描述</label><textarea id="task-desc" rows="2"></textarea></div>
+      <div class="form-row"><div class="form-group"><label>来源</label><select id="task-source"><option value="advisor">👨‍🏫 导师</option><option value="self">📌 自己</option><option value="course">📚 课程</option><option value="other">📎 其他</option></select></div><div class="form-group"><label>优先级</label><select id="task-priority"><option value="high">🔴 高</option><option value="medium" selected>🟡 中</option><option value="low">🟢 低</option></select></div></div>
+      <button class="btn btn-primary" onclick="app.addTask()">✅ 添加</button>
+    </div>
+    <div class="card">
+      <h2>📋 所有任务</h2>
+      <div class="filter-tabs" id="task-filter-tabs">
+        <button class="filter-tab active" data-filter="all">全部 <span id="c-all">0</span></button>
+        <button class="filter-tab" data-filter="pending">未完成 <span id="c-pending">0</span></button>
+        <button class="filter-tab" data-filter="overdue">逾期 <span id="c-overdue">0</span></button>
+        <button class="filter-tab" data-filter="completed">已完成 <span id="c-completed">0</span></button>
+      </div>
+      <div id="tasks-list"></div>
+    </div>
+  </div>
+
+  <!-- ==================== 看板 ==================== -->
+  <div id="page-dashboard" class="page">
+    <div id="dash-no-data" class="empty-state"><div class="icon">📊</div><p>还没有数据</p></div>
+    <div id="dash-content" style="display:none;">
+      <div class="status-bar" id="status-bar"></div>
+      <div class="card"><h2>📈 时间进度</h2><div id="time-progress"></div></div>
+      <div class="chart-row">
+        <div class="card"><h2>🍩 近7天时间分配</h2><div class="chart-wrap"><canvas id="week-pie"></canvas></div></div>
+        <div class="card"><h2>📉 近7天自评</h2><div class="chart-wrap"><canvas id="rating-line"></canvas></div></div>
+      </div>
+      <div class="card"><h2>📊 各目标维度投入趋势（近14天）</h2><div class="chart-wrap"><canvas id="goal-trend"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- ==================== AI 对话（全屏） ==================== -->
+  <div id="page-chat" class="page">
+    <div class="full-chat">
+      <div class="chat-header" style="padding:14px 16px;">💬 AI 深度对话 <span style="font-size:10px;font-weight:400;">你可以在这里进行深入交流、寻求建议</span></div>
+      <div class="chat-messages" id="full-chat-msgs" style="display:flex;flex-direction:column;"></div>
+      <div class="chat-input-row">
+        <input type="text" id="full-chat-input" placeholder="输入你想问的任何问题…" onkeydown="if(event.key==='Enter')app.sendFullChat()">
+        <button onclick="app.sendFullChat()">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 设置 ==================== -->
+  <div id="page-settings" class="page">
+    <div class="card">
+      <h2>👤 个人档案</h2>
+      <div class="form-row">
+        <div class="form-group"><label>学校</label><input type="text" id="prof-school" value="河北科技大学"></div>
+        <div class="form-group"><label>专业</label><input type="text" id="prof-major" value="智能科学与技术"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>导师</label><input type="text" id="prof-advisor" value="张杨"></div>
+        <div class="form-group"><label>姓名（选填）</label><input type="text" id="prof-name" placeholder="你的名字"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>开始日期</label><input type="date" id="prof-start" value="2026-07-01"></div>
+        <div class="form-group"><label>目标日期</label><input type="date" id="prof-end" value="2029-01-01"></div>
+      </div>
+      <div class="form-group"><label>总目标</label><textarea id="prof-goal" rows="2">同时准备申请博士、考公务员、进国企</textarea></div>
+      <div class="form-group"><label>子目标（一行一个）</label><textarea id="prof-subgoals" rows="4">发表至少1篇学术论文
+通过国考或省考笔试
+拿到至少1个国企offer
+保持良好师生关系和学术声誉</textarea></div>
+      <button class="btn btn-success" onclick="app.saveProfile()">💾 保存档案</button>
+      <span id="prof-msg" style="margin-left:10px;font-size:13px;color:var(--accent2);"></span>
+    </div>
+
+    <div class="card">
+      <h2>🔑 API 密钥</h2>
+      <div class="setting-row"><div><div class="setting-label">DeepSeek API Key</div><div class="setting-desc">用于 AI 规划和对话。platform.deepseek.com</div></div><input type="password" id="ds-key-input" class="api-input" placeholder="sk-..."></div>
+      <div class="setting-row"><div><div class="setting-label">Anthropic API Key</div><div class="setting-desc">用于 AI 周分析（可选）。console.anthropic.com</div></div><input type="password" id="api-key-input" class="api-input" placeholder="sk-ant-..."></div>
+      <button class="btn btn-primary" onclick="app.saveKeys()">💾 保存密钥</button>
+      <span id="keys-msg" style="margin-left:10px;font-size:13px;color:var(--accent2);"></span>
+    </div>
+
+    <div class="card">
+      <h2>💾 数据</h2>
+      <div class="btn-group"><button class="btn btn-primary" onclick="app.exportData()">📥 导出 JSON</button><button class="btn btn-outline" onclick="document.getElementById('import-file').click()">📤 导入 JSON</button><input type="file" id="import-file" accept=".json" style="display:none" onchange="app.importData(event)"></div>
+    </div>
+    <div class="card"><h2>⚠️ 危险</h2><button class="btn btn-danger" onclick="app.clearAllData()">🗑️ 清除全部数据</button></div>
+  </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar"><div class="bar-btns">
+  <button data-tab="today" class="active"><span class="bb-icon">📅</span>今日</button>
+  <button data-tab="chat"><span class="bb-icon">💬</span>对话</button>
+  <button data-tab="dashboard"><span class="bb-icon">📊</span>看板</button>
+</div></div>
+
+<script>
+const STORAGE='grad-planner-v5';
+const CAT={research:'🔬科研',course:'📚课程',english:'🇬🇧英语',coding:'💻编程',reading:'📖阅读',writing:'✍️写作',networking:'🤝社交',rest:'😴休息',other:'📌其他'};
+const SRC={advisor:'👨‍🏫导师',self:'📌自己',course:'📚课程',other:'📎其他'};
+const PRI={high:'🔴高',medium:'🟡中',low:'🟢低'};
+const WDAYS=['日','一','二','三','四','五','六'];
+
+class App{
+  constructor(){
+    this.data=this.loadData();
+    this._todayDate=this.today();
+    this._todayTasks=[];
+    this._weekPieChart=null;this._ratingChart=null;this._goalTrendChart=null;
+    this.initNav();this.initBottomBar();this.initTaskFilters();this.setupPWA();
+    this.renderAll();
+  }
+
+  today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+
+  // ---- PWA ----
+  setupPWA(){
+    const m={name:'研途规划',short_name:'研途',start_url:'.',display:'standalone',background_color:'#f5f5f5',theme_color:'#2c3e50',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>",sizes:'any'}]};
+    const b=new Blob([JSON.stringify(m)],{type:'application/json'});
+    const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(b);
+    document.head.appendChild(l);
+  }
+
+  // ---- Persistence ----
+  loadData(){
+    const def={
+      profile:{name:'',major:'智能科学与技术',school:'河北科技大学',advisor:'张杨',startDate:'2026-07-01',endDate:'2029-01-01',masterGoal:'同时准备申请博士、考公务员、进国企',subGoals:['发表至少1篇学术论文','通过国考或省考笔试','拿到至少1个国企offer','保持良好师生关系和学术声誉']},
+      entries:[],pendingTasks:[],chatHistory:[],weeklyReviews:[],todayStates:{},
+      settings:{deepseekApiKey:'',anthropicApiKey:''}
+    };
+    try{
+      const r=localStorage.getItem(STORAGE);
+      if(r){
+        const d=JSON.parse(r);
+        // Merge defaults
+        if(!d.profile)d.profile=def.profile;
+        if(!d.profile.subGoals)d.profile.subGoals=def.profile.subGoals;
+        if(!d.chatHistory)d.chatHistory=[];
+        if(!d.settings)d.settings=def.settings;
+        if(!('deepseekApiKey' in d.settings))d.settings.deepseekApiKey='';
+        return d;
+      }
+    }catch(e){}
+    return def;
+  }
+  save(){localStorage.setItem(STORAGE,JSON.stringify(this.data));}
+
+  // ---- Navigation ----
+  initNav(){
+    const sw=(tab)=>{
+      document.querySelectorAll('nav button[data-tab],.bottom-bar button[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      const pg=document.getElementById('page-'+tab);if(pg)pg.classList.add('active');
+      if(tab==='today')this.renderToday();
+      if(tab==='tasks')this.renderTasksPage();
+      if(tab==='dashboard')this.renderDashboard();
+      if(tab==='chat')this.renderFullChat();
+      if(tab==='settings')this.renderSettings();
+    };
+    document.querySelectorAll('nav button[data-tab]').forEach(b=>b.addEventListener('click',()=>sw(b.dataset.tab)));
+  }
+  initBottomBar(){
+    document.querySelectorAll('.bottom-bar button[data-tab]').forEach(b=>b.addEventListener('click',()=>{
+      const nb=document.querySelector(`nav button[data-tab="${b.dataset.tab}"]`);if(nb)nb.click();
+    }));
+  }
+  initTaskFilters(){
+    document.querySelectorAll('#task-filter-tabs .filter-tab').forEach(t=>t.addEventListener('click',()=>{
+      document.querySelectorAll('#task-filter-tabs .filter-tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');this.renderTasks();
+    }));
+  }
+
+  // ---- Profile ----
+  saveProfile(){
+    this.data.profile={
+      name:document.getElementById('prof-name').value.trim(),
+      major:document.getElementById('prof-major').value.trim(),
+      school:document.getElementById('prof-school').value.trim(),
+      advisor:document.getElementById('prof-advisor').value.trim(),
+      startDate:document.getElementById('prof-start').value,
+      endDate:document.getElementById('prof-end').value,
+      masterGoal:document.getElementById('prof-goal').value.trim(),
+      subGoals:document.getElementById('prof-subgoals').value.split('\n').filter(s=>s.trim())
+    };
+    this.save();
+    document.getElementById('prof-msg').textContent='✅ 已保存';
+    setTimeout(()=>{document.getElementById('prof-msg').textContent='';},3000);
+    this.toast('档案已保存');
+  }
+
+  // ---- Today ----
+  shiftDay(n){const d=new Date(this._todayDate);d.setDate(d.getDate()+n);this._todayDate=this.fmt(d);this.renderToday();}
+  goToday(){this._todayDate=this.today();this.renderToday();}
+
+  renderToday(){
+    this._todayDate=document.getElementById('today-date-picker')?.value||this._todayDate;
+    const d=this._todayDate;
+    const p=this.data.profile;
+    const dow=WDAYS[new Date(d).getDay()];
+    const totalDays=Math.round((new Date(p.endDate)-new Date(p.startDate))/(1000*60*60*24));
+    const elapsed=Math.round((new Date(d)-new Date(p.startDate))/(1000*60*60*24));
+    const remaining=Math.max(0,totalDays-elapsed);
+    const progress=totalDays>0?Math.round((elapsed/totalDays)*100):0;
+
+    document.getElementById('today-date-picker').value=d;
+    document.getElementById('today-date-display').textContent=`📅 ${d} 周${dow}`;
+    document.getElementById('today-meta').innerHTML=`${p.school} · ${p.major} · ${p.advisor}老师 | 距目标日还有 <b>${remaining}</b> 天 (${progress}%)`;
+
+    // Build today plan
+    this._todayTasks=this.buildTodayPlan(d);
+
+    // Restore saved state (merge deadline tasks + restore AI/adhoc)
+    const saved=this.data.todayStates[d];
+    if(saved&&saved.tasks){
+      const existingMap={};
+      this._todayTasks.forEach(t=>{existingMap[t.id]=t;});
+      saved.tasks.forEach(st=>{
+        if(existingMap[st.id]){
+          existingMap[st.id].completed=st.completed;
+          existingMap[st.id].actualHours=st.actualHours;
+        }else{
+          this._todayTasks.push({...st});
+        }
+      });
+    }
+
+    this.renderTodayTasks();
+    this.renderTodayStats();
+    this.renderTodayChat();
+
+    // Restore reflection
+    if(saved){document.getElementById('today-reflection').value=saved.reflection||'';document.getElementById('today-self-rating').value=saved.selfRating||3;}
+    else{document.getElementById('today-reflection').value='';document.getElementById('today-self-rating').value='3';}
+
+    // Saved indicator
+    const hasEntry=this.data.entries.some(e=>e.date===d&&e._summarySaved);
+    document.getElementById('today-saved-msg').style.display=hasEntry?'inline':'none';
+    document.getElementById('today-saved-msg').textContent=hasEntry?'✅ 今日总结已保存':'';
+  }
+
+  buildTodayPlan(date){
+    const tasks=[];
+    // Add deadline tasks
+    this.data.pendingTasks.filter(t=>!t.completed&&t.dueDate<=date).forEach(t=>{
+      tasks.push({id:'deadline-'+t.id,desc:t.title,category:'other',plannedHours:2,actualHours:null,completed:false,source:'deadline',sourceId:t.id,priority:t.priority,dueDate:t.dueDate});
+    });
+    return tasks;
+  }
+
+  renderTodayTasks(){
+    const c=document.getElementById('today-tasks');
+    if(!this._todayTasks.length){
+      c.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-light);"><p>今天还没有计划</p><button class="btn btn-primary btn-sm" onclick="app.aiPlanToday()" style="margin-top:8px;">🤖 AI 自动规划</button></div>';
+      return;
+    }
+    c.innerHTML=this._todayTasks.map((t,i)=>{
+      const isOverdue=t.source==='deadline'&&t.dueDate&&t.dueDate<this._todayDate;
+      let cls='today-task';if(t.completed)cls+=' done';if(isOverdue)cls+=' overdue';
+      return `<div class="${cls}">
+        <input type="checkbox" class="task-checkbox" ${t.completed?'checked':''} onchange="app.toggleTodayTask(${i})">
+        <div class="task-body">
+          <div class="task-desc ${t.completed?'done-text':''}">${t.desc}</div>
+          <div class="task-meta">
+            <span class="tag tag-${t.category}">${CAT[t.category]}</span> <span>计划${t.plannedHours}h</span>
+            ${t.source==='deadline'?`<span class="tag ${isOverdue?'tag-overdue':'tag-writing'}">📌${isOverdue?'逾期':'截止'+t.dueDate}</span>`:`<span style="font-size:10px;color:var(--text-light);">🤖 AI规划</span>`}
+          </div>
+          <div class="task-hours"><label>实际:</label><input type="number" step="0.5" min="0" max="24" value="${t.actualHours||''}" placeholder="h" onchange="app.setActualHours(${i},this.value)" ${t.completed?'':'disabled'}><span style="font-size:10px;color:var(--text-light);">h</span></div>
+        </div>
+        <button class="btn btn-xs btn-danger" onclick="app.removeTodayTask(${i})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  toggleTodayTask(i){
+    this._todayTasks[i].completed=!this._todayTasks[i].completed;
+    if(!this._todayTasks[i].completed)this._todayTasks[i].actualHours=null;
+    this.saveTodayState();this.renderTodayTasks();this.renderTodayStats();
+  }
+  setActualHours(i,val){this._todayTasks[i].actualHours=parseFloat(val)||null;this.saveTodayState();this.renderTodayStats();}
+  removeTodayTask(i){this._todayTasks.splice(i,1);this.saveTodayState();this.renderToday();}
+
+  addAdhocToday(){
+    const desc=prompt('任务描述：');if(!desc||!desc.trim())return;
+    this._todayTasks.push({id:'adhoc-'+Date.now(),desc:desc.trim(),category:'other',plannedHours:1,actualHours:null,completed:false,source:'adhoc',sourceId:null});
+    this.saveTodayState();this.renderToday();this.toast('已添加');
+  }
+
+  renderTodayStats(){
+    const done=this._todayTasks.filter(t=>t.completed).length;
+    const total=this._todayTasks.length;
+    const planned=this._todayTasks.reduce((s,t)=>s+(t.plannedHours||0),0);
+    const actual=this._todayTasks.reduce((s,t)=>s+(t.actualHours||0),0);
+    document.getElementById('today-summary-stats').innerHTML=`
+      <div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--accent);">${done}/${total}</div><div style="font-size:11px;color:var(--text-light);">完成/计划</div></div>
+      <div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--accent);">${actual.toFixed(1)}h</div><div style="font-size:11px;color:var(--text-light);">实际用时</div></div>
+      <div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--text-light);">${planned.toFixed(1)}h</div><div style="font-size:11px;color:var(--text-light);">计划用时</div></div>
+      <div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:${done===total&&total>0?'var(--accent2)':'var(--warn)'};">${total-done}</div><div style="font-size:11px;color:var(--text-light);">未完成</div></div>`;
+  }
+
+  saveTodayState(){
+    this.data.todayStates[this._todayDate]={
+      tasks:this._todayTasks.map(t=>({id:t.id,desc:t.desc,category:t.category,plannedHours:t.plannedHours,actualHours:t.actualHours,completed:t.completed,source:t.source,sourceId:t.sourceId,priority:t.priority,dueDate:t.dueDate})),
+      reflection:document.getElementById('today-reflection')?.value||'',
+      selfRating:parseInt(document.getElementById('today-self-rating')?.value)||3
+    };
+    this.save();
+  }
+
+  saveTodaySummary(){
+    const d=this._todayDate;
+    this.data.entries=this.data.entries.filter(e=>!(e.date===d&&e._summarySaved));
+    const reflection=document.getElementById('today-reflection').value.trim();
+    const selfRating=parseInt(document.getElementById('today-self-rating').value)||3;
+    const activities=this._todayTasks.filter(t=>t.completed).map(t=>({time:'',desc:t.desc,category:t.category,hours:t.actualHours||t.plannedHours||1,alignment:t.source==='deadline'?4:5}));
+    if(activities.length||reflection){
+      this.data.entries.push({id:'s-'+Date.now(),date:d,activities,selfRating,reflection,_summarySaved:true});
+      this.data.entries.sort((a,b)=>b.date.localeCompare(a.date));
+    }
+    this.saveTodayState();this.save();
+    document.getElementById('today-saved-msg').style.display='inline';
+    document.getElementById('today-saved-msg').textContent='✅ 已保存';
+    this.toast('今日总结已保存');
+  }
+
+  // ---- AI Plan Today ----
+  async aiPlanToday(){
+    const ak=this.data.settings.deepseekApiKey;
+    if(!ak){this.toast('请先在设置中配置 DeepSeek API Key');return;}
+    const btn=document.getElementById('btn-ai-plan');const status=document.getElementById('ai-plan-status');
+    btn.disabled=true;btn.textContent='⏳...';status.style.display='block';status.textContent='AI 分析你的数据和目标...';
+
+    const d=this._todayDate;
+    const p=this.data.profile;
+    const dow=WDAYS[new Date(d).getDay()];
+    const remaining=Math.max(0,Math.round((new Date(p.endDate)-new Date(d))/(1000*60*60*24)));
+    const totalDays=Math.round((new Date(p.endDate)-new Date(p.startDate))/(1000*60*60*24));
+    const elapsed=Math.round((new Date(d)-new Date(p.startDate))/(1000*60*60*24));
+    const progress=totalDays>0?Math.round((elapsed/totalDays)*100):0;
+
+    // Recent 14 days
+    const wa=new Date(d);wa.setDate(wa.getDate()-14);const was=this.fmt(wa);
+    const recent=this.data.entries.filter(e=>e.date>=was&&e.date<d);
+    const recentSummary=recent.map(e=>{
+      const acts=e.activities.map(a=>`  ${CAT[a.category]} ${a.desc} (${a.hours}h)`).join('\n');
+      return `${e.date} 自评${e.selfRating}/5: ${e.reflection||'无'}\n${acts}`;
+    }).join('\n\n')||'（暂无记录）';
+
+    // Behavior patterns
+    const last7=this.data.entries.filter(e=>e.date>=this.fmt(new Date(new Date(d).getTime()-7*86400000))&&e.date<d);
+    const catHours={};last7.forEach(e=>e.activities.forEach(a=>{catHours[a.category]=(catHours[a.category]||0)+a.hours;}));
+    const catTotal=Object.values(catHours).reduce((s,v)=>s+v,0)||1;
+    const catPct=Object.entries(catHours).map(([k,v])=>`${CAT[k]}:${(v/catTotal*100).toFixed(0)}%`).join(', ')||'无数据';
+    const avgRating=last7.length?(last7.reduce((s,e)=>s+e.selfRating,0)/last7.length).toFixed(1):'无';
+
+    // Overdue
+    const overdue=this.data.pendingTasks.filter(t=>!t.completed&&t.dueDate<d);
+
+    // Yesterday
+    const yesterday=new Date(d);yesterday.setDate(yesterday.getDate()-1);const yesStr=this.fmt(yesterday);
+    const yesterdayEntry=this.data.entries.find(e=>e.date===yesStr);
+    const yesterdaySummary=yesterdayEntry?`完成${yesterdayEntry.activities.length}项, 自评${yesterdayEntry.selfRating}/5, ${yesterdayEntry.reflection||''}`:'无记录';
+
+    const prompt=`你是「研途」AI规划助手。你是了解学生全部情况的导师。请为今天生成一个个性化每日计划。
+
+## 学生档案
+${p.school} · ${p.major} · 导师${p.advisor}
+时间：${p.startDate} → ${p.endDate}（共${totalDays}天，已过${elapsed}天，剩${remaining}天，进度${progress}%）
+总目标：${p.masterGoal}
+子目标：${p.subGoals.join('、')}
+
+## 昨天(${yesStr})完成情况
+${yesterdaySummary}
+
+## 近7天行为数据
+- 时间分配：${catPct}
+- 平均自评：${avgRating}/5
+- 总有效时间：${catTotal.toFixed(1)}h
+
+## 近14天详细记录
+${recentSummary}
+
+## 当前待办
+${overdue.length?overdue.map(t=>`⚠️逾期: ${t.title}(截止${t.dueDate})`).join('\n'):'无逾期任务'}
+
+## 对话历史（最近15轮）
+${this.data.chatHistory.slice(-15).map(m=>(m.role==='user'?'学生':'AI')+': '+m.content).join('\n')||'暂无对话'}
+
+## 今天: ${d} 周${dow}
+
+请返回纯JSON数组（不要markdown）：
+[{"desc":"具体任务","category":"research|course|english|coding|reading|writing|networking|rest|other","hours":1.5}]
+
+要求：
+1. 5-8个具体可执行任务，总时长6-10h
+2. 结合三条路径（申博/考公/国企）均衡安排，根据进度调整侧重
+3. 重点参考对话历史中学生提到的事项和关注点，基于对话中的真实信息生成任务
+4. 不要编造你不知道的信息——如果对话/记录里没有提到具体论文标题、具体人名、具体企业名，就写成"阅读导师指定的论文""做行测数量关系练习"这样的通用描述
+5. 参考学生历史效率，合理预估每项时长
+6. 逾期任务优先
+7. 包含休息/运动`;
+
+    try{
+      const res=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+ak},body:JSON.stringify({model:'deepseek-chat',max_tokens:2000,temperature:0.7,messages:[{role:'system',content:'你是研究生规划助手，只返回JSON数组格式。'},{role:'user',content:prompt}]})});
+      if(!res.ok){const err=await res.json();throw new Error(err.error?.message||`API错误${res.status}`);}
+      const data=await res.json();
+      let text=data.choices[0].message.content.trim();
+      const match=text.match(/\[[\s\S]*\]/);if(match)text=match[0];
+      const tasks=JSON.parse(text);
+      if(!Array.isArray(tasks)||!tasks.length)throw new Error('AI返回格式错误');
+
+      // Replace AI-generated tasks (keep deadline tasks)
+      const dlTasks=this._todayTasks.filter(t=>t.source==='deadline'||t.source==='adhoc');
+      this._todayTasks=[
+        ...tasks.map((t,i)=>({id:'ai-'+Date.now()+'-'+i,desc:t.desc,category:t.category||'other',plannedHours:t.hours||1,actualHours:null,completed:false,source:'ai',sourceId:null})),
+        ...dlTasks.filter(t=>!tasks.some(tt=>tt.desc.includes(t.desc.substring(0,5))))
+      ];
+      this.saveTodayState();this.renderTodayTasks();this.renderTodayStats();
+      status.textContent='✅ AI 已根据你的历史数据和目标生成今日计划';
+      this.toast('AI 计划已生成');
+    }catch(err){
+      status.textContent='❌ '+err.message;
+      this.toast('AI规划失败: '+err.message);
+    }finally{btn.disabled=false;btn.textContent='🤖 AI 规划';setTimeout(()=>{status.style.display='none';},6000);}
+  }
+
+  // ---- Chat (Today panel) ----
+  renderTodayChat(){
+    const c=document.getElementById('today-chat-msgs');
+    const recent=this.data.chatHistory.slice(-20);
+    if(!recent.length){c.innerHTML='<div class="chat-msg ai">👋 你好！我是你的AI导师。我了解你的目标（申博+考公+进国企）和你的全部历史记录。点击「🤖 AI 规划」让我为你生成今日计划，或者直接跟我聊聊你的想法。</div>';return;}
+    c.innerHTML=recent.map(m=>{
+      const cls=m.role==='user'?'user':'ai';
+      const label=m.role==='user'?'你':'AI';
+      return `<div class="chat-msg ${cls}"><strong>${label}:</strong> ${m.content}<div class="chat-time">${new Date(m.time).toLocaleTimeString()}</div></div>`;
+    }).join('');
+    c.scrollTop=c.scrollHeight;
+  }
+
+  async sendTodayChat(){
+    const input=document.getElementById('today-chat-input');
+    const msg=input.value.trim();if(!msg)return;
+    input.value='';
+    this.data.chatHistory.push({role:'user',content:msg,time:new Date().toISOString()});
+    this.save();this.renderTodayChat();
+    await this.aiReply('today');
+  }
+
+  // ---- Full Chat page ----
+  renderFullChat(){
+    const c=document.getElementById('full-chat-msgs');
+    const recent=this.data.chatHistory.slice(-50);
+    if(!recent.length){c.innerHTML='<div class="chat-msg ai" style="align-self:flex-start;background:var(--chat-ai);">👋 在这里你可以跟我深入交流。我可以：<br>• 分析你的行为模式<br>• 帮你做生活/学习决策<br>• 评估三条路径的进展<br>• 任何你想聊的</div>';return;}
+    c.innerHTML=recent.map(m=>{
+      const cls=m.role==='user'?'user':'ai';
+      const label=m.role==='user'?'你':'AI';
+      return `<div class="chat-msg ${cls}" style="align-self:${m.role==='user'?'flex-end':'flex-start'};background:${m.role==='user'?'var(--chat-user)':'var(--chat-ai)'};color:${m.role==='user'?'#fff':'inherit'};">${m.content}<div class="chat-time">${new Date(m.time).toLocaleTimeString()}</div></div>`;
+    }).join('');
+    c.scrollTop=c.scrollHeight;
+  }
+
+  async sendFullChat(){
+    const input=document.getElementById('full-chat-input');
+    const msg=input.value.trim();if(!msg)return;
+    input.value='';
+    this.data.chatHistory.push({role:'user',content:msg,time:new Date().toISOString()});
+    this.save();this.renderFullChat();
+    await this.aiReply('full');
+  }
+
+  async aiReply(mode){
+    const ak=this.data.settings.deepseekApiKey;
+    if(!ak){this.toast('请先配置 DeepSeek API Key');return;}
+
+    const p=this.data.profile;
+    // Recent 14 days summary
+    const wa=new Date();wa.setDate(wa.getDate()-14);const was=this.fmt(wa);
+    const recent=this.data.entries.filter(e=>e.date>=was);
+    const recentSummary=recent.map(e=>{
+      const acts=e.activities.map(a=>`${CAT[a.category]}:${a.desc}(${a.hours}h)`).join(', ');
+      return `${e.date}|自评${e.selfRating}/5|${acts}|${e.reflection||''}`;
+    }).join('\n')||'暂无';
+
+    const context=`## 学生档案
+${p.school}·${p.major}·导师${p.advisor}·${p.startDate}→${p.endDate}
+总目标：${p.masterGoal}
+子目标：${p.subGoals.join('、')}
+
+## 近14天记录
+${recentSummary}
+
+## 对话历史（最近10轮）
+${this.data.chatHistory.slice(-10).map(m=>(m.role==='user'?'学生':'AI')+': '+m.content).join('\n')}
+
+请像了解学生的导师一样自然回复。如果学生行为偏离目标，要指出。如果学生咨询决策，基于数据给建议。用中文，简洁有力。`;
+
+    try{
+      const res=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+ak},body:JSON.stringify({model:'deepseek-chat',max_tokens:2000,temperature:0.7,messages:[{role:'system',content:'你是研途AI导师。你了解学生的完整档案和历史记录。回复要基于数据，诚实但鼓励。如果发现严重偏离目标，要明确指出。'},{role:'user',content:context}]})});
+      if(!res.ok){const err=await res.json();throw new Error(err.error?.message||`API错误${res.status}`);}
+      const data=await res.json();
+      const reply=data.choices[0].message.content;
+      this.data.chatHistory.push({role:'assistant',content:reply,time:new Date().toISOString()});
+      this.save();
+      if(mode==='today')this.renderTodayChat();
+      else this.renderFullChat();
+    }catch(err){
+      this.data.chatHistory.push({role:'assistant',content:'抱歉，连接AI服务失败：'+err.message,time:new Date().toISOString()});
+      this.save();
+      if(mode==='today')this.renderTodayChat();
+      else this.renderFullChat();
+    }
+  }
+
+  // ---- Tasks Library ----
+  renderTasksPage(){document.getElementById('task-due').value=this.today();this.renderTasks();}
+  addTask(){
+    const title=document.getElementById('task-title').value.trim(),due=document.getElementById('task-due').value;
+    if(!title||!due){this.toast('请填写标题和日期');return;}
+    this.data.pendingTasks.push({id:Date.now().toString(),title,description:document.getElementById('task-desc').value.trim(),dueDate:due,createdDate:this.today(),source:document.getElementById('task-source').value,priority:document.getElementById('task-priority').value,completed:false,completedDate:null});
+    this.save();document.getElementById('task-title').value='';document.getElementById('task-desc').value='';
+    this.renderTasks();this.toast('已添加');
+  }
+  renderTasks(){
+    const filter=document.querySelector('#task-filter-tabs .filter-tab.active')?.dataset.filter||'all';
+    const now=this.today(),all=[...this.data.pendingTasks];
+    document.getElementById('c-all').textContent=all.length;
+    document.getElementById('c-pending').textContent=all.filter(t=>!t.completed).length;
+    document.getElementById('c-overdue').textContent=all.filter(t=>!t.completed&&t.dueDate<now).length;
+    document.getElementById('c-completed').textContent=all.filter(t=>t.completed).length;
+    let tasks=all;
+    if(filter==='pending')tasks=all.filter(t=>!t.completed);
+    else if(filter==='overdue')tasks=all.filter(t=>!t.completed&&t.dueDate<now);
+    else if(filter==='completed')tasks=all.filter(t=>t.completed);
+    tasks.sort((a,b)=>{if(a.completed!==b.completed)return a.completed?1:-1;const ao=!a.completed&&a.dueDate<now,bo=!b.completed&&b.dueDate<now;if(ao!==bo)return ao?-1:1;return a.dueDate.localeCompare(b.dueDate);});
+    const c=document.getElementById('tasks-list');
+    if(!tasks.length){c.innerHTML='<div class="empty-state"><p>暂无任务</p></div>';return;}
+    c.innerHTML=tasks.map(t=>{
+      const ov=!t.completed&&t.dueDate<now;let cls='task-card priority-'+t.priority;if(ov)cls+=' overdue';if(t.completed)cls+=' completed';
+      return `<div class="${cls}"><div class="task-body"><div class="task-title" style="${t.completed?'text-decoration:line-through;':''}">${t.title}</div>${t.description?`<div style="font-size:12px;color:var(--text-light);">${t.description}</div>`:''}<div class="task-meta">📅${t.dueDate} ${ov?'<span class="tag tag-overdue">逾期</span>':''} <span class="tag tag-source-${t.source}">${SRC[t.source]}</span> <span class="tag tag-priority-${t.priority}">${PRI[t.priority]}</span> ${t.completed?`<span class="tag tag-done">✅${t.completedDate}</span>`:''}</div></div><div class="task-actions">${!t.completed?`<button class="btn btn-xs btn-success" onclick="app.toggleTask('${t.id}')">✅</button>`:`<button class="btn btn-xs btn-outline" onclick="app.toggleTask('${t.id}')">↩️</button>`}<button class="btn btn-xs btn-outline" onclick="app.editTask('${t.id}')">✏️</button><button class="btn btn-xs btn-danger" onclick="app.deleteTask('${t.id}')">🗑️</button></div></div>`;
+    }).join('');
+  }
+  toggleTask(id){const t=this.data.pendingTasks.find(x=>x.id===id);if(t){t.completed=!t.completed;t.completedDate=t.completed?this.today():null;this.save();this.renderTasks();this.toast(t.completed?'已完成':'已恢复');}}
+  editTask(id){const t=this.data.pendingTasks.find(x=>x.id===id);if(!t)return;document.getElementById('task-title').value=t.title;document.getElementById('task-due').value=t.dueDate;document.getElementById('task-desc').value=t.description;document.getElementById('task-source').value=t.source;document.getElementById('task-priority').value=t.priority;this.data.pendingTasks=this.data.pendingTasks.filter(x=>x.id!==id);this.save();this.renderTasks();this.toast('已加载到表单');window.scrollTo({top:0,behavior:'smooth'});}
+  deleteTask(id){if(confirm('确定删除？')){this.data.pendingTasks=this.data.pendingTasks.filter(x=>x.id!==id);this.save();this.renderTasks();this.toast('已删除');}}
+
+  // ---- Dashboard ----
+  renderDashboard(){
+    if(!this.data.entries.length){document.getElementById('dash-no-data').style.display='block';document.getElementById('dash-content').style.display='none';return;}
+    document.getElementById('dash-no-data').style.display='none';document.getElementById('dash-content').style.display='block';
+    const p=this.data.profile;
+    const totalDays=Math.round((new Date(p.endDate)-new Date(p.startDate))/(1000*60*60*24));
+    const elapsed=Math.round((new Date()-new Date(p.startDate))/(1000*60*60*24));
+    const prog=Math.min(100,Math.round((elapsed/totalDays)*100));
+    const remaining=Math.max(0,totalDays-elapsed);
+
+    const now=this.today();const wa=new Date();wa.setDate(wa.getDate()-7);const was=this.fmt(wa);
+    const we=this.data.entries.filter(e=>e.date>=was&&e.date<=now);
+    const th=we.reduce((s,e)=>s+e.activities.reduce((ss,a)=>ss+a.hours,0),0);
+    const ar=we.length?(we.reduce((s,e)=>s+e.selfRating,0)/we.length).toFixed(1):'0';
+    const pt=this.data.pendingTasks.filter(t=>!t.completed).length;
+    const totalEntries=this.data.entries.length;
+
+    document.getElementById('status-bar').innerHTML=`
+      <div class="status-item"><div class="value">${th.toFixed(1)}h</div><div class="label">本周用时</div></div>
+      <div class="status-item"><div class="value">${ar}</div><div class="label">平均自评</div></div>
+      <div class="status-item"><div class="value">${prog}%</div><div class="label">时间进度</div></div>
+      <div class="status-item"><div class="value">${remaining}天</div><div class="label">剩余</div></div>
+      <div class="status-item"><div class="value">${pt}</div><div class="label">待办任务</div></div>`;
+
+    document.getElementById('time-progress').innerHTML=`<div class="progress-wrap"><div class="progress-fill" style="width:${prog}%;"></div></div><span style="font-size:11px;color:var(--text-light);">${p.startDate} → ${p.endDate} · 共${totalDays}天</span>`;
+
+    this._renderWeekPie(we);
+    this._renderRatingLine(this.data.entries);
+    this._renderGoalTrend(this.data.entries);
+  }
+
+  _renderWeekPie(we){const cv=document.getElementById('week-pie');if(this._weekPieChart)this._weekPieChart.destroy();const ch={};we.forEach(e=>e.activities.forEach(a=>{ch[a.category]=(ch[a.category]||0)+a.hours;}));const cols={research:'#1abc9c',course:'#2980b9',english:'#f39c12',coding:'#8e44ad',reading:'#16a085',writing:'#c0392b',networking:'#d68910',rest:'#95a5a6',other:'#bdc3c7'};if(!Object.keys(ch).length)return;this._weekPieChart=new Chart(cv,{type:'doughnut',data:{labels:Object.keys(ch).map(c=>CAT[c]||c),datasets:[{data:Object.values(ch),backgroundColor:Object.keys(ch).map(c=>cols[c]||'#95a5a6')}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});}
+  _renderRatingLine(entries){const cv=document.getElementById('rating-line');if(this._ratingChart)this._ratingChart.destroy();const r=entries.slice(0,7).reverse();this._ratingChart=new Chart(cv,{type:'line',data:{labels:r.map(e=>e.date.slice(5)),datasets:[{label:'自评',data:r.map(e=>e.selfRating),borderColor:'#f39c12',backgroundColor:'rgba(243,156,18,0.1)',fill:true,tension:0.3}]},options:{responsive:true,scales:{y:{min:0,max:5}},plugins:{legend:{display:false}}}});}
+  _renderGoalTrend(entries){
+    const cv=document.getElementById('goal-trend');if(this._goalTrendChart)this._goalTrendChart.destroy();
+    const r=entries.slice(0,14).reverse();
+    // Group categories into 3 goal dimensions
+    const dims={research:['research','reading','writing'],exam:['coding','reading','writing'],career:['networking','coding','writing']};
+    const data=r.map(e=>{
+      const total=e.activities.reduce((s,a)=>s+a.hours,0)||1;
+      const research=e.activities.filter(a=>['research','reading','writing'].includes(a.category)).reduce((s,a)=>s+a.hours,0);
+      const exam=e.activities.filter(a=>['coding','reading'].includes(a.category)).reduce((s,a)=>s+a.hours,0);
+      const career=e.activities.filter(a=>['networking','coding'].includes(a.category)).reduce((s,a)=>s+a.hours,0);
+      return {research:Math.round(research*10)/10,exam:Math.round(exam*10)/10,career:Math.round(career*10)/10};
+    });
+    this._goalTrendChart=new Chart(cv,{type:'line',data:{labels:r.map(e=>e.date.slice(5)),datasets:[
+      {label:'申博(科研)',data:data.map(d=>d.research),borderColor:'#1abc9c',backgroundColor:'rgba(26,188,156,0.1)',fill:false,tension:0.3},
+      {label:'考公',data:data.map(d=>d.exam),borderColor:'#f39c12',backgroundColor:'rgba(243,156,18,0.1)',fill:false,tension:0.3},
+      {label:'国企',data:data.map(d=>d.career),borderColor:'#3498db',backgroundColor:'rgba(52,152,219,0.1)',fill:false,tension:0.3}
+    ]},options:{responsive:true,scales:{y:{title:{display:true,text:'小时'}}},plugins:{legend:{position:'bottom'}}}});
+  }
+
+  // ---- Settings ----
+  renderSettings(){
+    const p=this.data.profile;
+    document.getElementById('prof-school').value=p.school||'';
+    document.getElementById('prof-major').value=p.major||'';
+    document.getElementById('prof-advisor').value=p.advisor||'';
+    document.getElementById('prof-name').value=p.name||'';
+    document.getElementById('prof-start').value=p.startDate||'';
+    document.getElementById('prof-end').value=p.endDate||'';
+    document.getElementById('prof-goal').value=p.masterGoal||'';
+    document.getElementById('prof-subgoals').value=(p.subGoals||[]).join('\n');
+    document.getElementById('ds-key-input').value=this.data.settings.deepseekApiKey||'';
+    document.getElementById('api-key-input').value=this.data.settings.anthropicApiKey||'';
+    document.getElementById('prof-msg').textContent='';
+    document.getElementById('keys-msg').textContent='';
+  }
+  saveKeys(){
+    this.data.settings.deepseekApiKey=document.getElementById('ds-key-input').value.trim();
+    this.data.settings.anthropicApiKey=document.getElementById('api-key-input').value.trim();
+    this.save();
+    document.getElementById('keys-msg').textContent='✅ 已保存';
+    setTimeout(()=>{document.getElementById('keys-msg').textContent='';},3000);
+    this.toast('密钥已保存');
+  }
+
+  // ---- Data ----
+  exportData(){const b=new Blob([JSON.stringify(this.data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`grad-planner-${this.today()}.json`;a.click();URL.revokeObjectURL(a.href);this.toast('已导出');}
+  importData(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(!d.profile||!d.entries)throw new Error('格式无效');if(confirm(`导入：${d.entries.length}条记录，${d.pendingTasks?.length||0}个任务。覆盖？`)){const ks=this.data.settings;this.data=d;this.data.settings=this.data.settings||ks;this.save();this.renderAll();this.toast('已导入✅');}}catch(err){this.toast('导入失败');}};r.readAsText(f);ev.target.value='';}
+  clearAllData(){if(confirm('⚠️确定清除？建议先导出。')&&confirm('再次确认')){localStorage.removeItem(STORAGE);this.data={profile:{name:'',major:'智能科学与技术',school:'河北科技大学',advisor:'张杨',startDate:'2026-07-01',endDate:'2029-01-01',masterGoal:'同时准备申请博士、考公务员、进国企',subGoals:['发表至少1篇学术论文','通过国考或省考笔试','拿到至少1个国企offer']},entries:[],pendingTasks:[],chatHistory:[],weeklyReviews:[],todayStates:{},settings:this.data.settings};this.save();this.renderAll();this.toast('已清除');}}
+
+  // ---- Utils ----
+  fmt(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+  toast(msg){const x=document.querySelector('.toast');if(x)x.remove();const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2500);}
+  renderAll(){
+    this.renderToday();
+    // Populate date picker
+    document.getElementById('today-date-picker').value=this._todayDate;
+  }
+}
+
+const app=new App();
+</script>
+</body>
+</html>
