@@ -370,10 +370,23 @@ textarea{resize:vertical;min-height:60px;}
       <span id="keys-msg" style="margin-left:10px;font-size:13px;color:var(--accent2);"></span>
     </div>
 
-    <div class="card">
-      <h2>💾 数据</h2>
-      <div class="btn-group"><button class="btn btn-primary" onclick="app.exportData()">📥 导出 JSON</button><button class="btn btn-outline" onclick="document.getElementById('import-file').click()">📤 导入 JSON</button><input type="file" id="import-file" accept=".json" style="display:none" onchange="app.importData(event)"></div>
-    </div>
+	    <div class="card">
+	      <h2>☁️ 云同步</h2>
+	      <div class="setting-desc" style="margin-bottom:10px;">通过 GitHub Gist 在多设备间同步数据。需要 GitHub 账号和 Token。</div>
+	      <div class="setting-row"><div><div class="setting-label">GitHub Token</div><div class="setting-desc">github.com → Settings → Developer settings → Personal access tokens → 勾选 gist 权限</div></div><input type="password" id="gh-token-input" class="api-input" placeholder="ghp_..."></div>
+	      <div id="sync-status" style="font-size:12px;color:var(--text-light);margin:8px 0;"></div>
+	      <div class="btn-group">
+	        <button class="btn btn-primary" onclick="app.saveGitHubToken()">💾 保存 Token</button>
+	        <button class="btn btn-success" onclick="app.syncUpload()">☁️ 上传到云端</button>
+	        <button class="btn btn-outline" onclick="app.syncDownload()">⬇️ 从云端下载</button>
+	      </div>
+	      <div style="margin-top:8px;"><label style="display:inline;margin-right:6px;"><input type="checkbox" id="auto-sync-check" onchange="app.toggleAutoSync()"> 保存时自动同步</label></div>
+	    </div>
+
+	    <div class="card">
+	      <h2>💾 本地数据</h2>
+	      <div class="btn-group"><button class="btn btn-primary" onclick="app.exportData()">📥 导出 JSON</button><button class="btn btn-outline" onclick="document.getElementById('import-file').click()">📤 导入 JSON</button><input type="file" id="import-file" accept=".json" style="display:none" onchange="app.importData(event)"></div>
+	    </div>
     <div class="card"><h2>⚠️ 危险</h2><button class="btn btn-danger" onclick="app.clearAllData()">🗑️ 清除全部数据</button></div>
   </div>
 </div>
@@ -417,7 +430,7 @@ class App{
     const def={
       profile:{name:'',major:'智能科学与技术',school:'河北科技大学',advisor:'张杨',startDate:'2026-07-01',endDate:'2029-01-01',masterGoal:'同时准备申请博士、考公务员、进国企',subGoals:['发表至少1篇学术论文','通过国考或省考笔试','拿到至少1个国企offer','保持良好师生关系和学术声誉']},
       entries:[],pendingTasks:[],chatHistory:[],weeklyReviews:[],todayStates:{},
-      settings:{deepseekApiKey:'',anthropicApiKey:''}
+      settings:{deepseekApiKey:''\,anthropicApiKey:''\,githubToken:''\,gistId:''\,autoSync:false}
     };
     try{
       const r=localStorage.getItem(STORAGE);
@@ -428,13 +441,13 @@ class App{
         if(!d.profile.subGoals)d.profile.subGoals=def.profile.subGoals;
         if(!d.chatHistory)d.chatHistory=[];
         if(!d.settings)d.settings=def.settings;
-        if(!('deepseekApiKey' in d.settings))d.settings.deepseekApiKey='';
+        if(!('deepseekApiKey' in d.settings))d.settings.deepseekApiKey='';if(!('githubToken' in d.settings))d.settings.githubToken='';if(!('gistId' in d.settings))d.settings.gistId='';if(!('autoSync' in d.settings))d.settings.autoSync=false;
         return d;
       }
     }catch(e){}
     return def;
   }
-  save(){localStorage.setItem(STORAGE,JSON.stringify(this.data));}
+  save(){localStorage.setItem(STORAGE,JSON.stringify(this.data));if(this.data.settings.autoSync&&this.data.settings.githubToken){this.syncUpload().catch(()=>{});}}
 
   // ---- Navigation ----
   initNav(){
@@ -901,7 +914,79 @@ ${this.data.chatHistory.slice(-10).map(m=>(m.role==='user'?'学生':'AI')+': '+m
     document.getElementById('api-key-input').value=this.data.settings.anthropicApiKey||'';
     document.getElementById('prof-msg').textContent='';
     document.getElementById('keys-msg').textContent='';
-  }
+	    document.getElementById('gh-token-input').value=this.data.settings.githubToken||'';
+	    document.getElementById('auto-sync-check').checked=this.data.settings.autoSync||false;
+	    document.getElementById('sync-status').textContent=this.data.settings.gistId?`Gist ID: ${this.data.settings.gistId}`:'未同步';
+	  }
+	  saveKeys(){
+	    this.data.settings.deepseekApiKey=document.getElementById('ds-key-input').value.trim();
+	    this.data.settings.anthropicApiKey=document.getElementById('api-key-input').value.trim();
+	    this.save();
+	    document.getElementById('keys-msg').textContent='✅ 已保存';
+	    setTimeout(()=>{document.getElementById('keys-msg').textContent='';},3000);
+	    this.toast('密钥已保存');
+	  }
+
+	  // ---- Cloud Sync ----
+	  saveGitHubToken(){
+	    this.data.settings.githubToken=document.getElementById('gh-token-input').value.trim();
+	    this.save();
+	    this.toast('Token 已保存');
+	  }
+	  toggleAutoSync(){
+	    this.data.settings.autoSync=document.getElementById('auto-sync-check').checked;
+	    this.save();
+	  }
+	  async syncUpload(){
+	    const token=this.data.settings.githubToken;
+	    if(!token){this.toast('请先配置 GitHub Token');return;}
+	    const status=document.getElementById('sync-status');
+	    status.textContent='⏳ 上传中...';
+	    try{
+	      const content=JSON.stringify(this.data,null,2);
+	      let res,data;
+	      if(this.data.settings.gistId){
+	        res=await fetch(`https://api.github.com/gists/${this.data.settings.gistId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({files:{'grad-planner-data.json':{content}}})});
+	      }else{
+	        res=await fetch('https://api.github.com/gists',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({description:'研途规划数据','public':false,files:{'grad-planner-data.json':{content}}})});
+	      }
+	      if(!res.ok){const err=await res.json();throw new Error(err.message||`HTTP ${res.status}`);}
+	      data=await res.json();
+	      this.data.settings.gistId=data.id;this.save();
+	      status.textContent=`✅ 已同步 ${new Date().toLocaleTimeString()} · Gist: ${data.id}`;
+	      this.toast('已同步到云端');
+	    }catch(err){status.textContent='❌ 上传失败: '+err.message;this.toast('同步失败: '+err.message);}
+	  }
+	  async syncDownload(){
+	    const token=this.data.settings.githubToken,gistId=this.data.settings.gistId;
+	    if(!token||!gistId){this.toast('请先上传一次或填入 Gist ID');return;}
+	    const status=document.getElementById('sync-status');
+	    status.textContent='⏳ 下载中...';
+	    try{
+	      const res=await fetch(`https://api.github.com/gists/${gistId}`,{headers:{'Authorization':'Bearer '+token}});
+	      if(!res.ok){const err=await res.json();throw new Error(err.message||`HTTP ${res.status}`);}
+	      const data=await res.json();
+	      const remote=JSON.parse(data.files['grad-planner-data.json'].content);
+	      const localTime=this.data.entries.length?new Date(this.data.entries[0].date).getTime():0;
+	      const remoteTime=remote.entries?.length?new Date(remote.entries[0].date).getTime():0;
+	      if(remoteTime>localTime||remote.entries?.length>this.data.entries.length){
+	        if(confirm(`云端有更新数据（${remote.entries?.length||0}条记录），本地（${this.data.entries.length}条）。合并？`)){
+	          const ks=this.data.settings;
+	          this.data=remote;this.data.settings=this.data.settings||ks;
+	          if(!('githubToken' in this.data.settings))this.data.settings.githubToken=ks.githubToken;
+	          if(!('gistId' in this.data.settings))this.data.settings.gistId=ks.gistId;
+	          this.save();this.renderAll();
+	          status.textContent=`✅ 已下载合并 ${new Date().toLocaleTimeString()}`;
+	          this.toast('已从云端下载');
+	        }
+	      }else{
+	        status.textContent=`ℹ️ 云端数据不更新（本地较新）`;
+	        this.toast('本地数据已是最新');
+	      }
+	    }catch(err){status.textContent='❌ 下载失败: '+err.message;this.toast('下载失败: '+err.message);}
+	  }
+
+	  // ---- Data ----
   saveKeys(){
     this.data.settings.deepseekApiKey=document.getElementById('ds-key-input').value.trim();
     this.data.settings.anthropicApiKey=document.getElementById('api-key-input').value.trim();
